@@ -1,0 +1,573 @@
+
+# Loading required packages - 
+import pandas as pd
+import pickle
+import matplotlib.pyplot as plt
+import streamlit as st
+from PIL import Image
+import string
+import regex
+import re
+import emoji
+# Forming word cloud - getting word frequencies -
+import nltk
+from nltk.corpus import stopwords
+from nltk.probability import FreqDist
+from nltk.stem import WordNetLemmatizer
+from wordcloud import WordCloud
+# For topic modeling - 
+from gensim.corpora import Dictionary
+from gensim.models.ldamodel import LdaModel
+from gensim.models.coherencemodel import CoherenceModel
+import pyLDAvis.gensim
+import gensim.corpora as corpora
+
+# ~~~~~~~~~~~~~~~~~~~~~~~ REQUIRED FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~
+
+# Function to form primary graphs for a selected team - 
+def get_data(team):
+    return pickle.load(open(f'Data_Cleaning/{team}.p', 'rb'))
+
+
+def plot_graph(temp, col1, col2):
+    
+    df_team = temp
+    
+    # ~~~~~~~ Plotting word cloud
+    
+    col1.write("""
+               ### Tweets word cloud - 
+               """)
+    # Getting each token from all the twets and finding the most common words -
+    flat_words = [item for sublist in df_team['topic_modeling_text'] for item in sublist]
+    word_freq = FreqDist(flat_words)
+    
+    # Creating a dictionary containing the word and respective count -
+    #retrieve word and count from FreqDist tuples
+    most_common_count = [x[1] for x in word_freq.most_common(50)]
+    most_common_word = [x[0] for x in word_freq.most_common(50)]
+    top_50_dictionary = dict(zip(most_common_word, most_common_count))
+    
+    
+    
+    # Getting the first 30 words for word cloud -
+    # plasma, magma, inferno, viridis, cividis
+    # best inferno :P
+    wordcloud = WordCloud(colormap = 'inferno', background_color = 'white')\
+    .generate_from_frequencies(top_50_dictionary)
+    # Plotting the word cloud of 50 words using matplotlib -
+    plt.figure(figsize=(12, 8))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis("off")
+    plt.tight_layout(pad=0)
+    #plt.savefig('top_50_cloud.png')
+    col1.pyplot()
+    
+    # ~~~~~~~ Plotting hashtag cloud 
+    
+    col2.write("""
+               ### Most Commonly used hashtags - 
+               """)
+    # Getting each token from all the twets and finding the most common words -
+    flat_words = [item for sublist in df_team['hashtags'] for item in sublist]
+    word_freq = FreqDist(flat_words)
+    # Creating a dictionary containing the word and respective count -
+    #retrieve word and count from FreqDist tuples
+    most_common_count = [x[1] for x in word_freq.most_common(20)]
+    most_common_word = [x[0] for x in word_freq.most_common(20)]
+    top_50_dictionary = dict(zip(most_common_word, most_common_count))
+    
+    # Getting the first 30 words for word cloud -
+    # plasma, magma, inferno, viridis, cividis
+    # best inferno :P
+    wordcloud = WordCloud(colormap = 'plasma', background_color = 'white')\
+    .generate_from_frequencies(top_50_dictionary)
+    # Plotting the word cloud of 50 words using matplotlib -
+    plt.figure(figsize=(12, 8))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis("off")
+    plt.tight_layout(pad=0)
+    #plt.savefig('top_50_cloud.png')
+    col2.pyplot()
+    
+
+def plot_sentiment_graph(team, col2):
+    df_team = df_sentiment.loc[df_sentiment['team'] == team]
+
+    df_team = df_team.groupby(['created']).agg({'sentiment_numeric' : 'sum'}).reset_index()
+    
+    col2.write("""
+               ### Sentiment trend of the team - 
+               """)
+    
+    plt.plot(df_team['created'], df_team['sentiment_numeric'], color = 'navy')
+    plt.title('Daily Tweets Sentiment Score', fontsize = 22)
+    plt.xlabel('Date', fontsize = 20)
+    plt.ylabel('Sentiment Score', fontsize = 20)
+    plt.axhline(y=0, color='black', linestyle='--')
+    plt.axhspan(0, plt.ylim()[1], facecolor='lightgreen')
+    plt.axhspan(plt.ylim()[0],0, facecolor='salmon')
+    #plt.xticks('rotation=20')
+    plt.tight_layout()
+    col2.pyplot()
+
+def get_topics(df, num_topics):
+    
+    df_temp = df.sample(frac = 0.2)
+    
+    text_dict = corpora.Dictionary(df_temp['topic_modeling_text'])
+    
+    tweets_bow = [text_dict.doc2bow(tweet) for tweet in df_temp['topic_modeling_text']]
+    
+    tweets_lda = LdaModel(tweets_bow,
+                      num_topics = num_topics,
+                      id2word = text_dict,
+                      random_state = 1,
+                      passes=10)
+    
+    words = [re.findall(r'"([^"]*)"',t[1]) for t in tweets_lda.print_topics()]
+    topics = [' '.join(t[0:10]) for t in words]
+    
+    # Getting the coherence score - 
+    st.write(' ')
+    coherence_model = CoherenceModel(model=tweets_lda, texts=df_temp['topic_modeling_text'], 
+                                   dictionary=text_dict, coherence='c_v')
+    coherence_lda = coherence_model.get_coherence()
+    
+    return topics, coherence_lda
+
+# ~~~~~~~~~~~~~~~~~~~~~~~ STREAMLIT PAGE FRONT END ~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~ NBA Tweets Analysis page
+
+def nba_analysis_page():
+    st.write("""
+             # NBA Tweets Analysis!
+             
+             This page is designed to give an overview of the tweets of NBA teams over a period of 6 moonths (Jan 2020 to June 2020).  
+             We first see the distribution of tweets by teams over the period to understand which team had more online presence. 
+             We also see the word distribution of the tweets.  
+             
+             Once we have the overall picture of the tweets, we can select a particular to understand the tweets of the team. 
+             In this section, we see the most used words in the weets and most used hash-tags. 
+             This helps us in understanding which hashtags resonate most with the fans and how we can tweek those to get more traction.
+             We also analyze the sentiment of the tweets over the period.  
+             
+             Lastly we can also try to derive topics from the tweets. 
+             We can select the number of topics we want to divide the tweets into and graph the PyLDAvis graph to explore the topics.
+             
+             """)
+             
+    st.write(' ')
+    
+    st.write("""
+             ## Initial Overview of all the tweets
+             
+             Below we can see the number of tweets by each team and the word frequency distribution of all the tweets.
+             """)
+    
+    # Dividing the screen into 2 columns -
+    col1, col2 = st.beta_columns((1,1.4))
+    
+    # displaying the distribution of tweets - 
+    team_count = pd.DataFrame(df_sentiment['team'].value_counts().reset_index())
+    team_count.columns = ['team', 'tweets_count']
+    
+    # Plotting the distribution - 
+    col1.write("""
+               #### Distribution of tweets -
+               """)
+    col1.write(' ')
+    plt.bar(team_count['team'], team_count['tweets_count'])
+    plt.xlabel('Team', fontsize = 12)
+    plt.ylabel('Number of Tweets', fontsize = 12)
+    plt.title('Distribution of Tweets', fontsize = 16)
+    plt.xticks(rotation=20)
+    plt.tight_layout()
+    col1.pyplot()
+    
+    # Loading the image - 
+    image = Image.open('Data_Cleaning/tweets_distribution.png')
+    
+    col2.write("""
+               #### Word frequency distribution -
+               """)
+    col2.image(image, use_column_width=True)
+    
+    st.write(' ')
+    st.write("""
+             #### Now that we have a little bit of information about the tweets, let's explore how it changes acoording to different teams -
+             """)
+    st.write(' ')
+    
+    # Dividing the screen into 2 columns -
+    col1, col2, col3 = st.beta_columns((1,1,1))
+    
+    selected_team = col2.selectbox('Select a team -', ['~ Select ~', 'Chicago Bulls', 'Miami Heat', 'Boston Celtics', 'Toronto Raptors', 
+                                                       'Houston Rockets'])
+    
+    st.write(' ')
+    
+    # Dividing the screen into 2 parts for team specific graphs -
+    word_col1, word_col2, word_col3 = st.beta_columns((2,0.2,2))
+    
+    # Dividing the screen for the sentiments - 
+    senti_col1, senti_col2, senti_col3 = st.beta_columns((0.75, 2, 0.75))
+    
+    if selected_team != '~ Select ~':
+        
+        # Forming word cloud, sentiment score and most hashtags used cloud - 
+        temp = get_data(selected_team)
+        plot_graph(temp, word_col1, word_col3)
+        plot_sentiment_graph(selected_team, senti_col2)
+        
+        # Getting to the topics - 
+        st.write(' ')
+        st.write("""
+                 From above we get an overview of the tweets in which a team was tagged. The same can help us in understanding the polarity of the team's tweets.  
+                 
+                 The marketing team can use this information to make an informed decsion. If needed, we also have the option to investigate the topics of the tweets leveraging the power of LDA. We can select the number of topics we want to divide the tweets into using the slider below.
+                 
+                 * **Note:** For visualization purposes, we only find topics on a subset of the data (20%) to ensure the program finishs in a timely manner. The same logic can be applied to the entire topic.
+                 """)
+        
+        topic_col1, topic_col2, topic_col3 = st.beta_columns((1,3,1))
+        
+        num_of_topics = topic_col2.selectbox('Select the number of topics for Topic Modeling', ['~ Select Num of Topics ~', 2, 3, 4, 5 ,6 ,7, 8, 9, 10])
+        
+        if num_of_topics != '~ Select Num of Topics ~':
+            topic_col2.info('Please wait while topic are being calculated. It may take 1-3 minutes.')
+            topics, coherence_lda = get_topics(temp, num_of_topics)
+            # Printing the results -
+            st.write(f'We divide the tweets into {num_of_topics} topics - ')
+            st.write('#### The topics are -')
+            
+            for id, t in enumerate(topics): 
+                st.write(f"------ Topic {id} ------")
+                st.write(t, end="\n")
+            
+            st.write('\n **Coherence Score: **', round(coherence_lda, 3))
+            # Add image and give download functionality!
+            
+            st.write("""
+                     ### PyLDAvis
+                     
+                     Trying to understand the topics above is a bit difficult. This is made easy with the help of 'PyLDAvis' plots. 
+                     
+                     A snapshot of the same can be seen below. Unfornately streamlit doesn't currently support the display of such interactive plots, but the use can refer to the code below to plot the same on thier local machine.
+                     
+                     """)
+            
+            st.write(' ')
+                        
+            with st.echo():
+                try:
+                    # Code for pyLDAvis -  
+                    vis = pyLDAvis.gensim.prepare() # LDA_Model,  # Bag_of_Words, # dictionary
+                    
+                    # To save the file in the working directory -  
+                    pyLDAvis.save_html(vis, 'LDA_Visualization.html')
+                except:
+                    pass
+            
+            st.write(' ')
+            st.write('#### Sample Image - ')
+            st.write(' ')
+            # Setting the image - 
+            image = Image.open('pyldavis.png')
+            if image.mode != "RGB":
+                image = image.convert('RGB')
+            # Setting the image width -
+            st.image(image, use_column_width=True)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~ User Area Page
+
+
+def remove_urls(df, url_command):
+    
+    if url_command == 'Remove URLs':
+        df['cleaned_text'] = df['cleaned_text'].str.replace(r"http\S+", "")
+    return df
+
+
+def hashtag_handler(df, hashtag_command):
+    if hashtag_command == 'Extract Hashtags':
+        def extract_hash_tags(s):
+            return list(set(part[1:] for part in s.split() if part.startswith('#')))
+        df['hashtags'] = df['cleaned_text'].apply(extract_hash_tags)
+    return df
+
+
+def username_remover(df, username_command):
+    if username_command == 'Remove User Names':
+        def remove_usernames(text):
+            return re.sub(r'@[^\s]+', '', text)
+        df['cleaned_text'] = df['cleaned_text'].apply(remove_usernames)
+    return df
+
+
+def handle_emoji(df, emoji_command):
+    if emoji_command == 'Remove Emojis':
+        def remove_emoji(text):
+            return emoji.get_emoji_regexp().sub(u'', text)
+        df['cleaned_text'] = df['cleaned_text'].apply(remove_emoji)
+    elif emoji_command == 'Rephrase emojis':
+        df['cleaned_text'] = df['cleaned_text'].apply(emoji.demojize)
+    return df
+
+
+def tokenize_func(df, tokenize_command):
+    if tokenize_command == 'Tokenize text':
+        def converting_tokens(text):
+            tokens = nltk.word_tokenize(text)
+            return tokens
+        df['cleaned_text'] = df['cleaned_text'].apply(converting_tokens)
+    return df
+
+
+def lemmatize_func(df, lemmatizing_command, tokenize_command):
+    if lemmatizing_command == 'Yes':
+        if tokenize_command != 'Tokenize text':
+            df = tokenize_func(df, 'Tokenize text')
+        
+        # Initializing the Lemmatizer object -
+        lemmatizer = WordNetLemmatizer()
+        def lemmatize_row(tokens):
+            lemmatized =[]
+            for token in tokens:
+                lemmatized.append(lemmatizer.lemmatize(token))
+            return lemmatized
+        
+        df['cleaned_text'] = df['cleaned_text'].apply(lemmatize_row)
+        
+    return df
+
+
+def stemming_func(df, stemming_command, tokenize_command):
+    if stemming_command == 'Yes':
+        if tokenize_command != 'Tokenize text':
+            df = tokenize_func(df, 'Tokenize text')
+        
+        # Initializing the Lemmatizer object -
+        ps = nltk.stem.PorterStemmer()
+        def stemming_row(tokens):
+            stemmed =[]
+            for token in tokens:
+                stemmed.append(ps.stem(token))
+            return stemmed
+        
+        df['cleaned_text'] = df['cleaned_text'].apply(stemming_row)
+        
+    return df   
+
+
+def get_stop_words(custom_words):
+    stop_words = stopwords.words('english')
+    stop_words += list(string.punctuation)
+    stop_words += ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    stop_words += ['’', '...', '…', '‘', "\'s", "\'\'", '“', '”', 'rt', 'wt...', 'w...', '``',
+               'm...', 'say', '-', '_', '__','hi','\n','\n\n', '&amp;', ' ', '.', '-', '—',
+               'got', "it's", 'it’s', "i'm", 'i’m', 'im', 'want', 'like', '$', '@', "n't", '']
+    if custom_words is not None:
+        stop_words += custom_words
+    return stop_words
+
+
+def remove_stop_words(df, stop_words, tokenize_command, stop_word_command):
+    if stop_word_command == 'Remove Stop words':
+        if tokenize_command != 'Tokenize text':
+            df = tokenize_func(df, 'Tokenize text')
+        
+        def row_stop_word(tokens):
+            clean_text = [token.lower() for token in tokens if token.lower() not in stop_words]
+            return clean_text
+        
+        df['cleaned_text'] = df['cleaned_text'].apply(row_stop_word)
+    return df
+
+
+
+def load_example_file():
+    input_df = pd.read_csv('Data_Cleaning/Jan.csv')
+    input_df = input_df.sample(1000, random_state = 42)
+    return input_df
+
+def basic_nlp():
+    
+    # Intro to the section -
+    st.write("""
+             # Basic NLP Analytics!
+             
+             Welcome to the Basic NLP Analytics page, the main aim of this page is make the process of NLP and text cleaning relatively easier for begineers.
+             
+             here the user can input their own data for NLP pre-processing. The users will be able to view the original data and cleaned data to analyze the differnce. Th users can then form a word cloud and gain a better understanding of the data they are dealing with. 
+             
+             Once the data has been cleaned, the users will be able to perform sentimental analysis and topic modelling on the cleaned data.  
+             
+             """)
+    st.write(' ')
+    
+    # About the section - 
+    about_expander = st.beta_expander('About')
+    about_expander.write("""
+                         Please read through the points to gain a beettter understanding of the functionality of the application. Here the user can upload thier own data to play around with. Once the data has been uploaded -   
+                         
+                         1. The user will be able to see the uploaded file. Please note - the code will automatically drop any NA values from the data to ensure smooth operation.  
+                         2. Once the data has been uploaded, the user will be asked to select the column on which they wish to perforn NLP.   
+                         3. The user can perform the following text cleaning tasks -   
+                             * Remove stops words (Can also add custom stop-words to remove based on their data!)   
+                             * Remove/rephrase emojis  
+                             * Transform the text into tokens  
+                             * Perform lemmatization  
+                             * Perform stemming  
+                         4. Once the data is ready, the user will be able to view a word cloud of the data using top 'N' words.   
+                         5. The user can then perform sentimental analysis which is calculated using the _ analyzer.  
+                         6. The user can also train a LDA model to get divide the raw data into various topics.  
+                         7. The user can download the cleaned CSV to use for further analysis on the local system.
+                             
+                         """)
+    st.write(' ')
+    st.write(' ')
+    
+    st.sidebar.write('--')
+    # Select Box to ask for input - 
+    input_preference = st.sidebar.selectbox("Input file", ["~ Select ~", "Input from Computer", "Use Example file"])
+    
+    user_data = 0
+    if input_preference == "Input from Computer":
+        uploaded_file = st.sidebar.file_uploader('Upload your input CSV file', type = ['csv'])
+        if uploaded_file is not None:
+            input_df = pd.read_csv(uploaded_file)
+            user_data = 1
+    elif input_preference == "Use Example file":
+        input_df = load_example_file()
+        user_data = 0
+        
+    if input_preference != "~ Select ~" and user_data != 2:
+        if input_df is not None:
+            col1, col2, col3 = st.beta_columns((1,4,1))
+            col2.write('Below we can see 100 random rows from the data ')
+            
+            col2.dataframe(input_df.sample(100, random_state = 42))
+            
+            if user_data == 1:
+                col_options = ['~ Select a column ~']
+                df_columns = list(input_df.columns)
+                col_options = col_options + df_columns
+                text_column = col2.selectbox('Choose the column for text pre-processing', col_options)
+            elif user_data == 0:
+                text_column = 'text'
+                col2. write("""
+                            ** We will be carrying out the text cleaning on the 'text' column.**
+                            """)
+        if text_column != "~ Select a column ~":
+            st.write(' ')
+            st.write("""
+                     
+                     ### Text pre-processing:
+                         
+                    Now that the text column has been selected, the user can choose from various operations below.  
+                    
+                    **Note:**
+                    * The code directly drops any na values in the data to avoid any unforseen errors and best user experience.
+                    * Removing stop words will automatically remove any custom stop words added.  
+                    * Lemmatizing and Stemming will automatically tokenize the texts.
+                    
+                    Once the data is cleaned we can see the new dataframe at the end along with a word cloud containing top 50 words.
+                     """)
+            
+            op_col0, op_col1, op_col2 = st.beta_columns((1,4,1))
+            
+            
+            url_command = op_col1.selectbox('Remove any URLs present', ['~ Select ~', 'Remove URLs'])
+            hashtag_command = op_col1.selectbox("If it's twitter data, would you like to extract the hashtags?", ['~ Select ~', 'Extract Hashtags', "Not Twitter data"])
+            username_command = op_col1.selectbox("If it's twitter data, would you like to take out the user names?", ['~ Select ~', 'Remove User Names', "Not Twitter data"])
+            emoji_command = op_col1.selectbox('How would you like to handle emojis -', ['~ Select ~', 'Remove Emojis', "Rephrase emojis"])
+            
+            tokenize_command = op_col1.selectbox('Would you like to tokenize texts -', ['~ Select ~', 'Tokenize text', "Never Mind"])
+            lemmatizing_command = op_col1.selectbox('Would you like to lemmatize -', ['~ Select ~', 'Yes', "No"])
+            stemming_command = op_col1.selectbox('Would you like to do stemming -', ['~ Select ~', 'Yes', "No"])
+            
+            user_stop_words = op_col1.text_area("Enter custom words you want to exclude (separated using a comma) - ", height = 100)
+            
+            user_stop_words = user_stop_words.replace(" ", "").split(",")
+            
+            stop_word_command = op_col1.selectbox('Remove stop-words', ['~ Select ~', 'Remove Stop words', "Keep stop words"])
+            
+            input_df['cleaned_text'] = input_df[text_column]
+            
+            total_stop_words = get_stop_words(user_stop_words)
+            input_df = remove_urls(input_df, url_command)
+            input_df = hashtag_handler(input_df, hashtag_command)
+            input_df = username_remover(input_df, username_command)
+            input_df = handle_emoji(input_df, emoji_command)
+            input_df = tokenize_func(input_df, tokenize_command)
+            input_df = lemmatize_func(input_df, lemmatizing_command, tokenize_command)
+            input_df = stemming_func(input_df, stemming_command, tokenize_command)
+            
+            input_df = remove_stop_words(input_df, total_stop_words, tokenize_command, stop_word_command)
+            
+            st.write(' ')
+            st.write("""
+                     ** Below we can analyze the changes in the 'cleaned_text' column of the data frame - **
+                     """)
+            st.write(' ')
+            st.dataframe(input_df.sample(100, random_state = 42))
+        else:
+            st.info("Choose a column for text Analysis")
+    else:
+        st.info('Awaiting input file')
+    
+# ~~~~~~~~~~~~~~~~~~~~~~~ Home Page
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~ Common front end
+
+# Setting the page layout -
+st.set_page_config(layout = 'wide')
+st.set_option('deprecation.showPyplotGlobalUse', False)
+
+# Setting the image - 
+image = Image.open('nlp_image_1.png')
+if image.mode != "RGB":
+    image = image.convert('RGB')
+# Setting the image width -
+st.image(image, use_column_width=True)
+
+# Loading the sentiment data because we require it immediately - 
+df_sentiment = pickle.load(open('Data_Cleaning/sentiment_data.p', 'rb'))
+
+# Sidebar navigation for users -
+st.sidebar.header('Navigation tab -')
+navigation_tab = st.sidebar.selectbox('Choose a tab', ('Home-Page', 'NBA Tweet Analysis', 'Basic NLP'))
+
+# Displaying pages according to the selection -
+
+# Default page -
+if navigation_tab == 'Home-Page':
+    # Introduction about the project -
+    st.write("""
+         # Natural Language Processing App!
+         
+         This app serves two purposes - 
+         * **NBA Tweet Analysis:** This page shows the analysis done by the author on tweets of NBA teams, to assist marketing team. They can examine the sentiment of the tweets and overall trends/polarity of the tweets. This can assist them in making informed decision about where to allocate their spend.
+         * **User Area:** Users can use this area to upload thier own data or a set of data and do simple text processing with the help of simple UI.
+         
+         """)
+    st.write(' ')
+    st.info('Please scroll through different sections using the navigation tab on the left')
+    
+    
+    st.write(' ')
+    
+# Analytics Page -
+elif navigation_tab == 'NBA Tweet Analysis':
+    nba_analysis_page()
+
+# Customer loyalty page -
+elif navigation_tab == 'Basic NLP':
+    basic_nlp()
+
+
+

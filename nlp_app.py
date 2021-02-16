@@ -605,7 +605,7 @@ def basic_nlp():
 # ~~~~~~~~~~~~~~~~~~~~~~~ Common front end
 
 # Setting the page layout -
-st.set_page_config(layout = 'wide')
+st.set_page_config(layout = 'wide', page_title = "NLP App")
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 # Setting the image - 

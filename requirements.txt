@@ -8,7 +8,7 @@ matplotlib==3.3.2
 regex==2.5.86
 re==2.2.1
 emoji==1.2.0
-nltk=3.5
+nltk==3.5
 wordcloud==1.8.1
 gensim==3.8.3
 pyLDAvis==3.2.0

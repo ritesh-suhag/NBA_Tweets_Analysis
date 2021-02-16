@@ -9,11 +9,13 @@ import string
 import regex
 import re
 import emoji
+import base64
 # Forming word cloud - getting word frequencies -
 import nltk
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 from nltk.stem import WordNetLemmatizer
+from nltk.sentiment import SentimentIntensityAnalyzer
 from wordcloud import WordCloud
 # For topic modeling - 
 from gensim.corpora import Dictionary
@@ -25,6 +27,7 @@ import gensim.corpora as corpora
 # ~~~~~~~~~~~~~~~~~~~~~~~ REQUIRED FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~
 
 # Function to form primary graphs for a selected team - 
+
 def get_data(team):
     return pickle.load(open(f'Data_Cleaning/{team}.p', 'rb'))
 
@@ -46,21 +49,18 @@ def plot_graph(temp, col1, col2):
     #retrieve word and count from FreqDist tuples
     most_common_count = [x[1] for x in word_freq.most_common(50)]
     most_common_word = [x[0] for x in word_freq.most_common(50)]
-    top_50_dictionary = dict(zip(most_common_word, most_common_count))
-    
-    
+    top_50_word = dict(zip(most_common_word, most_common_count))
     
     # Getting the first 30 words for word cloud -
     # plasma, magma, inferno, viridis, cividis
     # best inferno :P
     wordcloud = WordCloud(colormap = 'inferno', background_color = 'white')\
-    .generate_from_frequencies(top_50_dictionary)
+    .generate_from_frequencies(top_50_word)
     # Plotting the word cloud of 50 words using matplotlib -
     plt.figure(figsize=(12, 8))
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis("off")
     plt.tight_layout(pad=0)
-    #plt.savefig('top_50_cloud.png')
     col1.pyplot()
     
     # ~~~~~~~ Plotting hashtag cloud 
@@ -69,27 +69,25 @@ def plot_graph(temp, col1, col2):
                ### Most Commonly used hashtags - 
                """)
     # Getting each token from all the twets and finding the most common words -
-    flat_words = [item for sublist in df_team['hashtags'] for item in sublist]
-    word_freq = FreqDist(flat_words)
+    flat_hash = [item for sublist in df_team['hashtags'] for item in sublist]
+    word_freq = FreqDist(flat_hash)
     # Creating a dictionary containing the word and respective count -
     #retrieve word and count from FreqDist tuples
-    most_common_count = [x[1] for x in word_freq.most_common(20)]
-    most_common_word = [x[0] for x in word_freq.most_common(20)]
-    top_50_dictionary = dict(zip(most_common_word, most_common_count))
+    most_common_hash_count = [x[1] for x in word_freq.most_common(20)]
+    most_common_hash = [x[0] for x in word_freq.most_common(20)]
+    top_50_hash = dict(zip(most_common_hash, most_common_hash_count))
     
     # Getting the first 30 words for word cloud -
     # plasma, magma, inferno, viridis, cividis
     # best inferno :P
-    wordcloud = WordCloud(colormap = 'plasma', background_color = 'white')\
-    .generate_from_frequencies(top_50_dictionary)
+    hashcloud = WordCloud(colormap = 'plasma', background_color = 'white')\
+    .generate_from_frequencies(top_50_hash)
     # Plotting the word cloud of 50 words using matplotlib -
     plt.figure(figsize=(12, 8))
-    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.imshow(hashcloud, interpolation='bilinear')
     plt.axis("off")
     plt.tight_layout(pad=0)
-    #plt.savefig('top_50_cloud.png')
     col2.pyplot()
-    
 
 def plot_sentiment_graph(team, col2):
     df_team = df_sentiment.loc[df_sentiment['team'] == team]
@@ -218,7 +216,9 @@ def nba_analysis_page():
         
         # Forming word cloud, sentiment score and most hashtags used cloud - 
         temp = get_data(selected_team)
+        
         plot_graph(temp, word_col1, word_col3)
+        
         plot_sentiment_graph(selected_team, senti_col2)
         
         # Getting to the topics - 
@@ -282,13 +282,11 @@ def nba_analysis_page():
 
 # ~~~~~~~~~~~~~~~~~~~~~~~ User Area Page
 
-
 def remove_urls(df, url_command):
     
     if url_command == 'Remove URLs':
         df['cleaned_text'] = df['cleaned_text'].str.replace(r"http\S+", "")
     return df
-
 
 def hashtag_handler(df, hashtag_command):
     if hashtag_command == 'Extract Hashtags':
@@ -297,14 +295,12 @@ def hashtag_handler(df, hashtag_command):
         df['hashtags'] = df['cleaned_text'].apply(extract_hash_tags)
     return df
 
-
 def username_remover(df, username_command):
     if username_command == 'Remove User Names':
         def remove_usernames(text):
             return re.sub(r'@[^\s]+', '', text)
         df['cleaned_text'] = df['cleaned_text'].apply(remove_usernames)
     return df
-
 
 def handle_emoji(df, emoji_command):
     if emoji_command == 'Remove Emojis':
@@ -315,21 +311,16 @@ def handle_emoji(df, emoji_command):
         df['cleaned_text'] = df['cleaned_text'].apply(emoji.demojize)
     return df
 
-
-def tokenize_func(df, tokenize_command):
-    if tokenize_command == 'Tokenize text':
-        def converting_tokens(text):
-            tokens = nltk.word_tokenize(text)
-            return tokens
-        df['cleaned_text'] = df['cleaned_text'].apply(converting_tokens)
+def tokenize_func(df):
+    def converting_tokens(text):
+        tokens = nltk.word_tokenize(text)
+        return tokens
+    df['cleaned_text'] = df['cleaned_text'].apply(converting_tokens)
     return df
 
-
-def lemmatize_func(df, lemmatizing_command, tokenize_command):
+def lemmatize_func(df, lemmatizing_command):
     if lemmatizing_command == 'Yes':
-        if tokenize_command != 'Tokenize text':
-            df = tokenize_func(df, 'Tokenize text')
-        
+        df = tokenize_func(df)
         # Initializing the Lemmatizer object -
         lemmatizer = WordNetLemmatizer()
         def lemmatize_row(tokens):
@@ -337,17 +328,13 @@ def lemmatize_func(df, lemmatizing_command, tokenize_command):
             for token in tokens:
                 lemmatized.append(lemmatizer.lemmatize(token))
             return lemmatized
-        
         df['cleaned_text'] = df['cleaned_text'].apply(lemmatize_row)
-        
     return df
 
-
-def stemming_func(df, stemming_command, tokenize_command):
+def stemming_func(df, stemming_command, lemmatizing_command):
     if stemming_command == 'Yes':
-        if tokenize_command != 'Tokenize text':
-            df = tokenize_func(df, 'Tokenize text')
-        
+        if lemmatizing_command != 'Yes':
+            df = tokenize_func(df)
         # Initializing the Lemmatizer object -
         ps = nltk.stem.PorterStemmer()
         def stemming_row(tokens):
@@ -355,9 +342,7 @@ def stemming_func(df, stemming_command, tokenize_command):
             for token in tokens:
                 stemmed.append(ps.stem(token))
             return stemmed
-        
         df['cleaned_text'] = df['cleaned_text'].apply(stemming_row)
-        
     return df   
 
 
@@ -373,11 +358,10 @@ def get_stop_words(custom_words):
     return stop_words
 
 
-def remove_stop_words(df, stop_words, tokenize_command, stop_word_command):
+def remove_stop_words(df, stop_words, stop_word_command, lemmatizing_command, stemming_command):
     if stop_word_command == 'Remove Stop words':
-        if tokenize_command != 'Tokenize text':
-            df = tokenize_func(df, 'Tokenize text')
-        
+        if lemmatizing_command != 'Yes' and stemming_command != 'Yes':
+            df = tokenize_func(df)
         def row_stop_word(tokens):
             clean_text = [token.lower() for token in tokens if token.lower() not in stop_words]
             return clean_text
@@ -385,13 +369,23 @@ def remove_stop_words(df, stop_words, tokenize_command, stop_word_command):
         df['cleaned_text'] = df['cleaned_text'].apply(row_stop_word)
     return df
 
-
-
 def load_example_file():
     input_df = pd.read_csv('Data_Cleaning/Jan.csv')
     input_df = input_df.sample(1000, random_state = 42)
     return input_df
 
+# Download csv file -
+def filedownload(df):
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode() # Strings <-> bytes conversions
+    href = f'<a href="data:file/csv;base64,{b64}" download="cleaned_text.csv">Download CSV File</a>'
+    return href
+
+# Joining the token back into a sentence -
+def join_sentiment_text(row):
+    row = " ".join(row)
+    return row
+                
 def basic_nlp():
     
     # Intro to the section -
@@ -421,19 +415,18 @@ def basic_nlp():
                              * Perform lemmatization  
                              * Perform stemming  
                          4. Once the data is ready, the user will be able to view a word cloud of the data using top 'N' words.   
-                         5. The user can then perform sentimental analysis which is calculated using the _ analyzer.  
-                         6. The user can also train a LDA model to get divide the raw data into various topics.  
-                         7. The user can download the cleaned CSV to use for further analysis on the local system.
+                         5. The user can then perform sentimental analysis which is calculated using the _ analyzer.
+                         6. The user can download the cleaned CSV for further analysis.
                              
                          """)
     st.write(' ')
     st.write(' ')
     
-    st.sidebar.write('--')
+    st.sidebar.write('---')
     # Select Box to ask for input - 
     input_preference = st.sidebar.selectbox("Input file", ["~ Select ~", "Input from Computer", "Use Example file"])
     
-    user_data = 0
+    user_data = 2
     if input_preference == "Input from Computer":
         uploaded_file = st.sidebar.file_uploader('Upload your input CSV file', type = ['csv'])
         if uploaded_file is not None:
@@ -443,6 +436,7 @@ def basic_nlp():
         input_df = load_example_file()
         user_data = 0
         
+    
     if input_preference != "~ Select ~" and user_data != 2:
         if input_df is not None:
             col1, col2, col3 = st.beta_columns((1,4,1))
@@ -454,13 +448,15 @@ def basic_nlp():
                 col_options = ['~ Select a column ~']
                 df_columns = list(input_df.columns)
                 col_options = col_options + df_columns
-                text_column = col2.selectbox('Choose the column for text pre-processing', col_options)
+                text_column = col2.selectbox('Choose the column for text pre-processing', col_options, index = 0)
             elif user_data == 0:
                 text_column = 'text'
                 col2. write("""
                             ** We will be carrying out the text cleaning on the 'text' column.**
                             """)
         if text_column != "~ Select a column ~":
+            
+            
             st.write(' ')
             st.write("""
                      
@@ -469,9 +465,10 @@ def basic_nlp():
                     Now that the text column has been selected, the user can choose from various operations below.  
                     
                     **Note:**
-                    * The code directly drops any na values in the data to avoid any unforseen errors and best user experience.
+                    * The code directly drops any na values (only in the text column) in the data to avoid any unforseen errors and best user experience.
                     * Removing stop words will automatically remove any custom stop words added.  
-                    * Lemmatizing and Stemming will automatically tokenize the texts.
+                    * The program will tokenize the texts before removing stop words and performing lemmatizing or stemming.
+                    * The user can download the text, cleaned text, hashtags (if any) and sentiment score columns as CSV (currently data upto 250MB can be downloaded. This helps to reduce the size as much as possible.)
                     
                     Once the data is cleaned we can see the new dataframe at the end along with a word cloud containing top 50 words.
                      """)
@@ -479,21 +476,25 @@ def basic_nlp():
             op_col0, op_col1, op_col2 = st.beta_columns((1,4,1))
             
             
-            url_command = op_col1.selectbox('Remove any URLs present', ['~ Select ~', 'Remove URLs'])
-            hashtag_command = op_col1.selectbox("If it's twitter data, would you like to extract the hashtags?", ['~ Select ~', 'Extract Hashtags', "Not Twitter data"])
-            username_command = op_col1.selectbox("If it's twitter data, would you like to take out the user names?", ['~ Select ~', 'Remove User Names', "Not Twitter data"])
-            emoji_command = op_col1.selectbox('How would you like to handle emojis -', ['~ Select ~', 'Remove Emojis', "Rephrase emojis"])
+            url_command = op_col1.selectbox('Remove any URLs present', ['~ Select ~', 'Remove URLs'], index = 0)
+            hashtag_command = op_col1.selectbox("If it's twitter data, would you like to extract the hashtags?", ['~ Select ~', 'Extract Hashtags', "Not Twitter data"], index = 0)
+            username_command = op_col1.selectbox("If it's twitter data, would you like to take out the user names?", ['~ Select ~', 'Remove User Names', "Not Twitter data"], index = 0)
+            emoji_command = op_col1.selectbox('How would you like to handle emojis -', ['~ Select ~', 'Remove Emojis', "Rephrase emojis"], index = 0)
             
-            tokenize_command = op_col1.selectbox('Would you like to tokenize texts -', ['~ Select ~', 'Tokenize text', "Never Mind"])
-            lemmatizing_command = op_col1.selectbox('Would you like to lemmatize -', ['~ Select ~', 'Yes', "No"])
-            stemming_command = op_col1.selectbox('Would you like to do stemming -', ['~ Select ~', 'Yes', "No"])
+            lemmatizing_command = op_col1.selectbox('Would you like to lemmatize -', ['~ Select ~', 'Yes', "No"], index = 0)
+            stemming_command = op_col1.selectbox('Would you like to do stemming -', ['~ Select ~', 'Yes', "No"], index = 0)
             
-            user_stop_words = op_col1.text_area("Enter custom words you want to exclude (separated using a comma) - ", height = 100)
+            stop_word_command = op_col1.selectbox('Remove stop-words', ['~ Select ~', 'Remove Stop words', "Keep stop words"], index = 0)
             
-            user_stop_words = user_stop_words.replace(" ", "").split(",")
-            
-            stop_word_command = op_col1.selectbox('Remove stop-words', ['~ Select ~', 'Remove Stop words', "Keep stop words"])
-            
+            if stop_word_command == "Remove Stop words":
+                user_stop_words = op_col1.text_area("Enter custom words you want to exclude (separated using a comma) - ", height = 100)
+                user_stop_words = user_stop_words.replace(" ", "").split(",")
+            else:
+                user_stop_words = []
+                
+            input_df = input_df.dropna(subset = [text_column])
+            if user_data == 1:
+                input_df = pd.DataFrame({text_column : input_df[text_column]})
             input_df['cleaned_text'] = input_df[text_column]
             
             total_stop_words = get_stop_words(user_stop_words)
@@ -501,18 +502,97 @@ def basic_nlp():
             input_df = hashtag_handler(input_df, hashtag_command)
             input_df = username_remover(input_df, username_command)
             input_df = handle_emoji(input_df, emoji_command)
-            input_df = tokenize_func(input_df, tokenize_command)
-            input_df = lemmatize_func(input_df, lemmatizing_command, tokenize_command)
-            input_df = stemming_func(input_df, stemming_command, tokenize_command)
             
-            input_df = remove_stop_words(input_df, total_stop_words, tokenize_command, stop_word_command)
+            input_df = lemmatize_func(input_df, lemmatizing_command)
+            input_df = stemming_func(input_df, stemming_command, lemmatizing_command)
+            
+            input_df = remove_stop_words(input_df, total_stop_words, stop_word_command, lemmatizing_command, stemming_command)
             
             st.write(' ')
             st.write("""
                      ** Below we can analyze the changes in the 'cleaned_text' column of the data frame - **
                      """)
             st.write(' ')
-            st.dataframe(input_df.sample(100, random_state = 42))
+            
+            if (stop_word_command == "Remove Stop words" or lemmatizing_command == 'Yes' or stemming_command == 'Yes'):
+                
+                flat_words = [item for sublist in input_df['cleaned_text'] for item in sublist]
+                word_freq = FreqDist(flat_words)
+                
+                # Creating a dictionary containing the word and respective count -
+                #retrieve word and count from FreqDist tuples
+                most_common_count = [x[1] for x in word_freq.most_common(50)]
+                most_common_word = [x[0] for x in word_freq.most_common(50)]
+                top_50_word = dict(zip(most_common_word, most_common_count))
+                
+                input_df['sentiment_text'] = input_df['cleaned_text'].apply(join_sentiment_text)
+                
+                # Instatiating the sentiment intensity analyzer -
+                sid = SentimentIntensityAnalyzer()
+                
+                # Finding sentiment of each tweet - 
+                input_df['sentiment_score'] = input_df['sentiment_text'].apply(lambda review: sid.polarity_scores(review))
+                
+                # Getting the sentiment from dictionary - 
+                def get_sentiment(score_dict):
+                    if score_dict['compound'] > 0.2:
+                        return 'Positive'
+                    elif score_dict['compound'] < -0.2:
+                        return 'Negative'
+                    else:
+                        return 'Neutral'
+                
+                # Storing the sentiment in a separate column
+                input_df['sentiment'] = input_df['sentiment_score'].apply(get_sentiment)
+                input_df.drop(['sentiment_text', 'sentiment_score'], axis = 1, inplace = True)
+                
+                df_col1, df_col2, df_col3 = st.beta_columns((1,4,1))
+                input_word_cloud1, input_word_cloud2, input_word_cloud3 = st.beta_columns((1,3,1))
+                
+                df_col2.dataframe(input_df.sample(100, random_state = 42))
+                
+                input_word_cloud2. write(' ')
+                try:
+                    input_word_cloud2.markdown(f"{filedownload(input_df)}", unsafe_allow_html = True)
+                except RuntimeError:
+                    input_word_cloud2.info("Unfortunately, streamlit only allows file size upto 50 MB to be downloaded. I request you to please use a smaller version of your file.")
+                input_word_cloud2. write(' ')
+                input_word_cloud2.write("** Wordcloud of the text column - **")
+                # Getting the first 30 words for word cloud -
+                # plasma, magma, inferno, viridis, cividis
+                # best inferno :P
+                wordcloud = WordCloud(colormap = 'inferno', background_color = 'white')\
+                .generate_from_frequencies(top_50_word)
+                # Plotting the word cloud of 50 words using matplotlib -
+                plt.figure(figsize=(12, 8))
+                plt.imshow(wordcloud, interpolation='bilinear')
+                plt.axis("off")
+                plt.tight_layout(pad=0)
+                input_word_cloud2.pyplot()
+                
+                sentiment_df = input_df.groupby(["sentiment"]).agg({text_column : "count"}).reset_index()
+                plt.bar(sentiment_df["sentiment"], sentiment_df[text_column], color = ["red", "grey", "green"])
+                plt.xlabel("Sentiment", fontsize = 25)
+                plt.xticks(fontsize=25)
+                plt.yticks(fontsize=25)
+                plt.ylabel("Number of occurences", fontsize = 25)
+                plt.title("Sentiment Distribution", fontsize = 35)
+                input_word_cloud2.pyplot()
+                
+            else:
+                df_col1, df_col2, df_col3 = st.beta_columns((1,4,1))
+                df_col2.dataframe(input_df.sample(100, random_state = 42))
+                input_word_cloud1, input_word_cloud2, input_word_cloud3 = st.beta_columns((1,3,1))
+                input_word_cloud2. write(' ')
+                try:
+                    input_word_cloud2.markdown(f"{filedownload(input_df)}", unsafe_allow_html = True)
+                except RuntimeError:
+                    input_word_cloud2.info("Unfortunately, streamlit only allows file size upto 50 MB to be downloaded. I request you to please use a smaller version of your file.")
+                
+                input_word_cloud2. write(' ')
+                input_word_cloud2.info("The cleaned text isn't tokenized yet, so can't create the word cloud or get the sentiment score.")
+                
+            
         else:
             st.info("Choose a column for text Analysis")
     else:
@@ -568,6 +648,3 @@ elif navigation_tab == 'NBA Tweet Analysis':
 # Customer loyalty page -
 elif navigation_tab == 'Basic NLP':
     basic_nlp()
-
-
-

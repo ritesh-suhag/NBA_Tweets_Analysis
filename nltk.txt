@@ -1,5 +1,2 @@
-corpora
-probability
-stem
-sentiment
+stopwords
 

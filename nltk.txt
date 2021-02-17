@@ -1,9 +1,5 @@
-corpus
+corpora
 probability
 stem
 sentiment
-stopwords
-FreqDist
-WordNetLemmatizer
-SentimentIntensityAnalyzer
-PorterStemmer
+

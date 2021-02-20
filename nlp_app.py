@@ -142,16 +142,16 @@ def nba_analysis_page():
     st.write("""
              # NBA Tweets Analysis!
              
-             This page is designed to give an overview of the tweets of NBA teams over a period of 6 moonths (Jan 2020 to June 2020).  
-             We first see the distribution of tweets by teams over the period to understand which team had more online presence. 
+             This page is designed to give an overview of the tweets of NBA teams over a period of 6 months (Jan 2020 to June 2020).  
+             We first see the distribution of tweets by teams over the period to understand which team had a more online presence. 
              We also see the word distribution of the tweets.  
              
              Once we have the overall picture of the tweets, we can select a particular to understand the tweets of the team. 
-             In this section, we see the most used words in the weets and most used hash-tags. 
-             This helps us in understanding which hashtags resonate most with the fans and how we can tweek those to get more traction.
+             In this section, we see the most used words in the tweets and most used hash-tags. 
+             This helps us in understanding which hashtags resonate most with the fans and how we can tweak those to get more traction.
              We also analyze the sentiment of the tweets over the period.  
              
-             Lastly we can also try to derive topics from the tweets. 
+             Lastly, we can also try to derive topics from the tweets. 
              We can select the number of topics we want to divide the tweets into and graph the PyLDAvis graph to explore the topics.
              
              """)
@@ -194,7 +194,7 @@ def nba_analysis_page():
     
     st.write(' ')
     st.write("""
-             #### Now that we have a little bit of information about the tweets, let's explore how it changes acoording to different teams -
+             #### Now that we have a little bit of information about the tweets, let's explore how it changes according to different teams -
              """)
     st.write(' ')
     
@@ -226,9 +226,9 @@ def nba_analysis_page():
         st.write("""
                  From above we get an overview of the tweets in which a team was tagged. The same can help us in understanding the polarity of the team's tweets.  
                  
-                 The marketing team can use this information to make an informed decsion. If needed, we also have the option to investigate the topics of the tweets leveraging the power of LDA. We can select the number of topics we want to divide the tweets into using the slider below.
+                 The marketing team can use this information to make an informed decision. If needed, we also have the option to investigate the topics of the tweets leveraging the power of LDA. We can select the number of topics we want to divide the tweets into using the slider below.
                  
-                 * **Note:** For visualization purposes, we only find topics on a subset of the data (20%) to ensure the program finishs in a timely manner. The same logic can be applied to the entire topic.
+                 * **Note:** For visualization purposes, we only find topics on a subset of the data (20%) to ensure the program finishes in a timely manner. The same logic can be applied to the entire data.
                  """)
         
         topic_col1, topic_col2, topic_col3 = st.beta_columns((1,3,1))
@@ -236,7 +236,7 @@ def nba_analysis_page():
         num_of_topics = topic_col2.selectbox('Select the number of topics for Topic Modeling', ['~ Select Num of Topics ~', 2, 3, 4, 5 ,6 ,7, 8, 9, 10])
         
         if num_of_topics != '~ Select Num of Topics ~':
-            topic_col2.info('Please wait while topic are being calculated. It may take 1-3 minutes.')
+            topic_col2.info('Please wait while topic are being calculated. It may take 2-5 minutes.')
             topics, coherence_lda = get_topics(temp, num_of_topics)
             # Printing the results -
             st.write(f'We divide the tweets into {num_of_topics} topics - ')
@@ -254,7 +254,7 @@ def nba_analysis_page():
                      
                      Trying to understand the topics above is a bit difficult. This is made easy with the help of 'PyLDAvis' plots. 
                      
-                     A snapshot of the same can be seen below. Unfornately streamlit doesn't currently support the display of such interactive plots, but the use can refer to the code below to plot the same on thier local machine.
+                     A snapshot of the same can be seen below. Unfortunately streamlit doesn't currently support the display of such interactive plots, but the user can refer to the code below to plot the same on their local machine.
                      
                      """)
             
@@ -283,7 +283,6 @@ def nba_analysis_page():
 # ~~~~~~~~~~~~~~~~~~~~~~~ User Area Page
 
 def remove_urls(df, url_command):
-    
     if url_command == 'Remove URLs':
         df['cleaned_text'] = df['cleaned_text'].str.replace(r"http\S+", "")
     return df
@@ -365,12 +364,11 @@ def remove_stop_words(df, stop_words, stop_word_command, lemmatizing_command, st
         def row_stop_word(tokens):
             clean_text = [token.lower() for token in tokens if token.lower() not in stop_words]
             return clean_text
-        
         df['cleaned_text'] = df['cleaned_text'].apply(row_stop_word)
     return df
 
 def load_example_file():
-    input_df = pd.read_csv('Data_Cleaning/Jan.csv')
+    input_df = pd.read_csv('Data_Cleaning/Apr.csv')
     input_df = input_df.sample(1000, random_state = 42)
     return input_df
 
@@ -392,22 +390,23 @@ def basic_nlp():
     st.write("""
              # Basic NLP Analytics!
              
-             Welcome to the Basic NLP Analytics page, the main aim of this page is make the process of NLP and text cleaning relatively easier for begineers.
+             Welcome to the Basic NLP Analytics page, the main aim of this page is to make the process of NLP and text cleaning relatively easier for beginners.
              
-             here the user can input their own data for NLP pre-processing. The users will be able to view the original data and cleaned data to analyze the differnce. Th users can then form a word cloud and gain a better understanding of the data they are dealing with. 
-             
-             Once the data has been cleaned, the users will be able to perform sentimental analysis and topic modelling on the cleaned data.  
+             Here the user can input their own data for NLP pre-processing. The users will be able to view the original data and cleaned data to analyze the difference. The users can then form a word cloud and gain a better understanding of the data they are dealing with.
              
              """)
+             
+    st.write(' ')     
+    st.write("** The user can also use the reference code for text-preprocessing available at the end for personal use/projects.**")
     st.write(' ')
     
     # About the section - 
     about_expander = st.beta_expander('About')
     about_expander.write("""
-                         Please read through the points to gain a beettter understanding of the functionality of the application. Here the user can upload thier own data to play around with. Once the data has been uploaded -   
+                         Please read through the points to gain a better understanding of the functionality of the application. Here the user can upload their own data to play around with. Once the data has been uploaded -   
                          
                          1. The user will be able to see the uploaded file. Please note - the code will automatically drop any NA values from the data to ensure smooth operation.  
-                         2. Once the data has been uploaded, the user will be asked to select the column on which they wish to perforn NLP.   
+                         2. Once the data has been uploaded, the user will be asked to select the column on which they wish to perform NLP.   
                          3. The user can perform the following text cleaning tasks -   
                              * Remove stops words (Can also add custom stop-words to remove based on their data!)   
                              * Remove/rephrase emojis  
@@ -415,10 +414,12 @@ def basic_nlp():
                              * Perform lemmatization  
                              * Perform stemming  
                          4. Once the data is ready, the user will be able to view a word cloud of the data using top 'N' words.   
-                         5. The user can then perform sentimental analysis which is calculated using the _ analyzer.
-                         6. The user can download the cleaned CSV for further analysis.
-                             
+                         5. The user can then perform sentimental analysis which is calculated using the Sentiment Intensity Analyzer.
+                         6. The user can download the cleaned CSV for further analysis. 
                          """)
+    about_expander.write(" ")
+    about_expander.write(" ")
+        
     st.write(' ')
     st.write(' ')
     
@@ -465,12 +466,14 @@ def basic_nlp():
                     Now that the text column has been selected, the user can choose from various operations below.  
                     
                     **Note:**
-                    * The code directly drops any na values (only in the text column) in the data to avoid any unforseen errors and best user experience.
+                    * The code directly drops any NA values (only in the text column) in the data to avoid any unforeseen errors and the best user experience.
                     * Removing stop words will automatically remove any custom stop words added.  
                     * The program will tokenize the texts before removing stop words and performing lemmatizing or stemming.
-                    * The user can download the text, cleaned text, hashtags (if any) and sentiment score columns as CSV (currently data upto 250MB can be downloaded. This helps to reduce the size as much as possible.)
+                    * The user can download the text, cleaned text, hashtags (if any), and sentiment score columns as CSV (currently data up to 250MB can be downloaded. This helps to reduce the size as much as possible.)
                     
-                    Once the data is cleaned we can see the new dataframe at the end along with a word cloud containing top 50 words.
+                    Once the data is cleaned we can see the new data frame at the end along with a word cloud containing the top 50 words and the sentiment distribution.  
+                    
+                    
                      """)
             
             op_col0, op_col1, op_col2 = st.beta_columns((1,4,1))
@@ -497,7 +500,6 @@ def basic_nlp():
                 input_df = pd.DataFrame({text_column : input_df[text_column]})
             input_df['cleaned_text'] = input_df[text_column]
             
-            total_stop_words = get_stop_words(user_stop_words)
             input_df = remove_urls(input_df, url_command)
             input_df = hashtag_handler(input_df, hashtag_command)
             input_df = username_remover(input_df, username_command)
@@ -506,11 +508,12 @@ def basic_nlp():
             input_df = lemmatize_func(input_df, lemmatizing_command)
             input_df = stemming_func(input_df, stemming_command, lemmatizing_command)
             
+            total_stop_words = get_stop_words(user_stop_words)
             input_df = remove_stop_words(input_df, total_stop_words, stop_word_command, lemmatizing_command, stemming_command)
             
             st.write(' ')
             st.write("""
-                     ** Below we can analyze the changes in the 'cleaned_text' column of the data frame - **
+                     ** Below the user can analyze the changes in the 'cleaned_text' column of the data frame - **
                      """)
             st.write(' ')
             
@@ -556,6 +559,7 @@ def basic_nlp():
                     input_word_cloud2.markdown(f"{filedownload(input_df)}", unsafe_allow_html = True)
                 except RuntimeError:
                     input_word_cloud2.info("Unfortunately, streamlit only allows file size upto 50 MB to be downloaded. I request you to please use a smaller version of your file.")
+                
                 input_word_cloud2. write(' ')
                 input_word_cloud2.write("** Wordcloud of the text column - **")
                 # Getting the first 30 words for word cloud -
@@ -591,7 +595,92 @@ def basic_nlp():
                 
                 input_word_cloud2. write(' ')
                 input_word_cloud2.info("The cleaned text isn't tokenized yet, so can't create the word cloud or get the sentiment score.")
+            
+            # Giving the code for reference.
+            with st.echo():
                 
+                # Reference Code for text pre-processing - 
+                
+                try:
+                    
+                    # ~~~~~~~~~~ Importing required packages -
+                    import re
+                    import emoji
+                    import nltk
+                    import string
+                    
+                    # df represents the data frame that contains the text data -
+                    df = pd.Dataframe()
+                    
+                    # Replace text with the name of the column that contains the text data -
+                    text_column = "text"
+                    df["cleaned_text"] = df[text_column]
+                    
+                    # ~~~~~~~~~~ To remove URLs -
+                    df['cleaned_text'] = df['cleaned_text'].str.replace(r"http\S+", "")
+                    
+                    # ~~~~~~~~~~ To extract Hashtags -
+                    def extract_hash_tags(s):
+                        return list(set(part[1:] for part in s.split() if part.startswith('#')))
+                    df['hashtags'] = df['cleaned_text'].apply(extract_hash_tags)
+                    
+                    # ~~~~~~~~~~ To remove User-names -
+                    def remove_usernames(text):
+                        return re.sub(r'@[^\s]+', '', text)
+                    df['cleaned_text'] = df['cleaned_text'].apply(remove_usernames)
+                    
+                    # ~~~~~~~~~~ To remove Emojis -
+                    def remove_emoji(text):
+                        return emoji.get_emoji_regexp().sub(u'', text)
+                    df['cleaned_text'] = df['cleaned_text'].apply(remove_emoji)
+                    
+                    # ~~~~~~~~~~ To rephrase Emojis -
+                    df['cleaned_text'] = df['cleaned_text'].apply(emoji.demojize)
+                    
+                    # ~~~~~~~~~~ To tokenize the texts - 
+                    def converting_tokens(text):
+                        tokens = nltk.word_tokenize(text)
+                        return tokens
+                    df['cleaned_text'] = df['cleaned_text'].apply(converting_tokens)
+                    
+                    # ~~~~~~~~~~ To Lemmatize text (remember to tokenize the text before lemmatizing)
+                    lemmatizer = nltk.stem.WordNetLemmatizer()
+                    def lemmatize_row(tokens):
+                        lemmatized =[]
+                        for token in tokens:
+                            lemmatized.append(lemmatizer.lemmatize(token))
+                        return lemmatized
+                    df['cleaned_text'] = df['cleaned_text'].apply(lemmatize_row)
+                    
+                    # ~~~~~~~~~~ For performing stemming (remember to tokenize the text before stemming)
+                    ps = nltk.stem.PorterStemmer()
+                    def stemming_row(tokens):
+                        stemmed =[]
+                        for token in tokens:
+                            stemmed.append(ps.stem(token))
+                        return stemmed
+                    df['cleaned_text'] = df['cleaned_text'].apply(stemming_row)
+                    
+                    # ~~~~~~~~~~ Removing Stop-words -
+                    
+                    # Add the custom words in the list below - 
+                    custom_words = [""]
+                    
+                    def getting_stop_words(custom_words):
+                        stop_words = nltk.corpus.stopwords.words('english')
+                        stop_words += list(string.punctuation)
+                        stop_words += ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+                        if custom_words is not None:
+                            stop_words += custom_words
+                        return stop_words
+                    stop_words = getting_stop_words(custom_words)
+                    def remove_stop_word(tokens):
+                        clean_text = [token.lower() for token in tokens if token.lower() not in stop_words]
+                        return clean_text
+                    df['cleaned_text'] = df['cleaned_text'].apply(remove_stop_word)
+                    
+                except:
+                    pass
             
         else:
             st.info("Choose a column for text Analysis")
@@ -631,8 +720,8 @@ if navigation_tab == 'Home-Page':
          # Natural Language Processing App!
          
          This app serves two purposes - 
-         * **NBA Tweet Analysis:** This page shows the analysis done by the author on tweets of NBA teams, to assist marketing team. They can examine the sentiment of the tweets and overall trends/polarity of the tweets. This can assist them in making informed decision about where to allocate their spend.
-         * **User Area:** Users can use this area to upload thier own data or a set of data and do simple text processing with the help of simple UI.
+         * **NBA Tweet Analysis:** This page shows the analysis done by the author on tweets of NBA teams, to assist the marketing team. They can examine the sentiment of the tweets and the overall trends/polarity of the tweets. This can assist them in making an informed decision about where to allocate their spend.
+         * **User Area:** Users can use this area to upload their own data or a set of data and do simple text processing with the help of a simple UI.
          
          """)
     st.write(' ')

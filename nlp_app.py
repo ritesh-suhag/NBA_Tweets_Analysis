@@ -121,7 +121,7 @@ def get_topics(df, num_topics):
                       num_topics = num_topics,
                       id2word = text_dict,
                       random_state = 1,
-                      passes=10)
+                      passes=5)
     
     words = [re.findall(r'"([^"]*)"',t[1]) for t in tweets_lda.print_topics()]
     topics = [' '.join(t[0:10]) for t in words]
@@ -380,10 +380,62 @@ def filedownload(df):
     return href
 
 # Joining the token back into a sentence -
-def join_sentiment_text(row):
-    row = " ".join(row)
-    return row
-                
+def get_sentiment_score(df, sentiment_command):    
+    if sentiment_command == "Yes":    
+        def join_sentiment_text(row):
+            row = " ".join(row)
+            return row
+        df['sentiment_text'] = df['cleaned_text'].apply(join_sentiment_text)
+                    
+        # Instatiating the sentiment intensity analyzer -
+        sid = SentimentIntensityAnalyzer()
+        
+        # Finding sentiment of each tweet - 
+        df['sentiment_score'] = df['sentiment_text'].apply(lambda review: sid.polarity_scores(review))
+        
+        # Getting the sentiment from dictionary - 
+        def get_sentiment(score_dict):
+            if score_dict['compound'] > 0.2:
+                return 'Positive'
+            elif score_dict['compound'] < -0.2:
+                return 'Negative'
+            else:
+                return 'Neutral'
+        
+        # Storing the sentiment in a separate column
+        df['sentiment'] = df['sentiment_score'].apply(get_sentiment)
+        df.drop(['sentiment_text', 'sentiment_score'], axis = 1, inplace = True)
+    return df
+
+def get_topics_users(df, num_topics):
+    text_dict = corpora.Dictionary(df['cleaned_text'])
+    bow = [text_dict.doc2bow(tweet) for tweet in df['cleaned_text']]
+    lda_model = LdaModel(bow,
+                      num_topics = num_topics,
+                      id2word = text_dict,
+                      random_state = 1,
+                      passes=5)
+    words = [re.findall(r'"([^"]*)"',t[1]) for t in lda_model.print_topics()]
+    topics = [' '.join(t[0:10]) for t in words]
+    # Getting the coherence score - 
+    st.write(' ')
+    coherence_model = CoherenceModel(model=lda_model, texts=df['cleaned_text'], 
+                                   dictionary=text_dict, coherence='c_v')
+    coherence_lda = coherence_model.get_coherence()
+    return topics, coherence_lda
+
+def clean_func(input_df, url_command, hashtag_command, username_command, emoji_command, lemmatizing_command, stemming_command, user_stop_words, stop_word_command, sentiment_command):
+    input_df = remove_urls(input_df, url_command)
+    input_df = hashtag_handler(input_df, hashtag_command)
+    input_df = username_remover(input_df, username_command)
+    input_df = handle_emoji(input_df, emoji_command)
+    input_df = lemmatize_func(input_df, lemmatizing_command)
+    input_df = stemming_func(input_df, stemming_command, lemmatizing_command)
+    total_stop_words = get_stop_words(user_stop_words)
+    input_df = remove_stop_words(input_df, total_stop_words, stop_word_command, lemmatizing_command, stemming_command)
+    input_df = get_sentiment_score(input_df, sentiment_command)
+    return input_df
+
 def basic_nlp():
     
     # Intro to the section -
@@ -457,6 +509,10 @@ def basic_nlp():
                             """)
         if text_column != "~ Select a column ~":
             
+            input_df = input_df.dropna(subset = [text_column])
+            if user_data == 1:
+                input_df = pd.DataFrame({text_column : input_df[text_column]})
+            input_df['cleaned_text'] = input_df[text_column]
             
             st.write(' ')
             st.write("""
@@ -494,32 +550,41 @@ def basic_nlp():
                 user_stop_words = user_stop_words.replace(" ", "").split(",")
             else:
                 user_stop_words = []
-                
-            input_df = input_df.dropna(subset = [text_column])
-            if user_data == 1:
-                input_df = pd.DataFrame({text_column : input_df[text_column]})
-            input_df['cleaned_text'] = input_df[text_column]
+             
+            sentiment_command = op_col1.selectbox('Get Sentiment Score', ['~ Select ~', 'Yes', 'No'])
             
-            input_df = remove_urls(input_df, url_command)
-            input_df = hashtag_handler(input_df, hashtag_command)
-            input_df = username_remover(input_df, username_command)
-            input_df = handle_emoji(input_df, emoji_command)
+            # input_df = remove_urls(input_df, url_command)
+            # input_df = hashtag_handler(input_df, hashtag_command)
+            # input_df = username_remover(input_df, username_command)
+            # input_df = handle_emoji(input_df, emoji_command)
+            # input_df = lemmatize_func(input_df, lemmatizing_command)
+            # input_df = stemming_func(input_df, stemming_command, lemmatizing_command)
+            # total_stop_words = get_stop_words(user_stop_words)
+            # input_df = remove_stop_words(input_df, total_stop_words, stop_word_command, lemmatizing_command, stemming_command)
+            # input_df = get_sentiment_score(input_df, sentiment_command)
             
-            input_df = lemmatize_func(input_df, lemmatizing_command)
-            input_df = stemming_func(input_df, stemming_command, lemmatizing_command)
-            
-            total_stop_words = get_stop_words(user_stop_words)
-            input_df = remove_stop_words(input_df, total_stop_words, stop_word_command, lemmatizing_command, stemming_command)
-            
+            cleaned_df = clean_func(input_df, url_command, hashtag_command, username_command,
+                                  emoji_command, lemmatizing_command, stemming_command, user_stop_words, 
+                                  stop_word_command, sentiment_command)
             st.write(' ')
             st.write("""
                      ** Below the user can analyze the changes in the 'cleaned_text' column of the data frame - **
                      """)
             st.write(' ')
             
+            df_col1, df_col2, df_col3 = st.beta_columns((1,4,1))
+            df_col2.dataframe(cleaned_df.sample(100, random_state = 42))
+            
+            input_word_cloud1, input_word_cloud2, input_word_cloud3 = st.beta_columns((1,3,1))
+            try:
+                input_word_cloud2.markdown(f"{filedownload(cleaned_df)}", unsafe_allow_html = True)
+            except RuntimeError:
+                input_word_cloud2.info("Unfortunately, streamlit only allows file size upto 50 MB to be downloaded. I request you to please use a smaller version of your file.")
+            
+            
             if (stop_word_command == "Remove Stop words" or lemmatizing_command == 'Yes' or stemming_command == 'Yes'):
                 
-                flat_words = [item for sublist in input_df['cleaned_text'] for item in sublist]
+                flat_words = [item for sublist in cleaned_df['cleaned_text'] for item in sublist]
                 word_freq = FreqDist(flat_words)
                 
                 # Creating a dictionary containing the word and respective count -
@@ -528,37 +593,7 @@ def basic_nlp():
                 most_common_word = [x[0] for x in word_freq.most_common(50)]
                 top_50_word = dict(zip(most_common_word, most_common_count))
                 
-                input_df['sentiment_text'] = input_df['cleaned_text'].apply(join_sentiment_text)
-                
-                # Instatiating the sentiment intensity analyzer -
-                sid = SentimentIntensityAnalyzer()
-                
-                # Finding sentiment of each tweet - 
-                input_df['sentiment_score'] = input_df['sentiment_text'].apply(lambda review: sid.polarity_scores(review))
-                
-                # Getting the sentiment from dictionary - 
-                def get_sentiment(score_dict):
-                    if score_dict['compound'] > 0.2:
-                        return 'Positive'
-                    elif score_dict['compound'] < -0.2:
-                        return 'Negative'
-                    else:
-                        return 'Neutral'
-                
-                # Storing the sentiment in a separate column
-                input_df['sentiment'] = input_df['sentiment_score'].apply(get_sentiment)
-                input_df.drop(['sentiment_text', 'sentiment_score'], axis = 1, inplace = True)
-                
-                df_col1, df_col2, df_col3 = st.beta_columns((1,4,1))
-                input_word_cloud1, input_word_cloud2, input_word_cloud3 = st.beta_columns((1,3,1))
-                
-                df_col2.dataframe(input_df.sample(100, random_state = 42))
-                
                 input_word_cloud2. write(' ')
-                try:
-                    input_word_cloud2.markdown(f"{filedownload(input_df)}", unsafe_allow_html = True)
-                except RuntimeError:
-                    input_word_cloud2.info("Unfortunately, streamlit only allows file size upto 50 MB to be downloaded. I request you to please use a smaller version of your file.")
                 
                 input_word_cloud2. write(' ')
                 input_word_cloud2.write("** Wordcloud of the text column - **")
@@ -574,28 +609,81 @@ def basic_nlp():
                 plt.tight_layout(pad=0)
                 input_word_cloud2.pyplot()
                 
-                sentiment_df = input_df.groupby(["sentiment"]).agg({text_column : "count"}).reset_index()
-                plt.bar(sentiment_df["sentiment"], sentiment_df[text_column], color = ["red", "grey", "green"])
-                plt.xlabel("Sentiment", fontsize = 25)
-                plt.xticks(fontsize=25)
-                plt.yticks(fontsize=25)
-                plt.ylabel("Number of occurences", fontsize = 25)
-                plt.title("Sentiment Distribution", fontsize = 35)
-                input_word_cloud2.pyplot()
-                
-            else:
-                df_col1, df_col2, df_col3 = st.beta_columns((1,4,1))
-                df_col2.dataframe(input_df.sample(100, random_state = 42))
-                input_word_cloud1, input_word_cloud2, input_word_cloud3 = st.beta_columns((1,3,1))
-                input_word_cloud2. write(' ')
                 try:
-                    input_word_cloud2.markdown(f"{filedownload(input_df)}", unsafe_allow_html = True)
-                except RuntimeError:
-                    input_word_cloud2.info("Unfortunately, streamlit only allows file size upto 50 MB to be downloaded. I request you to please use a smaller version of your file.")
+                    if sentiment_command == "Yes":
+                        sentiment_df = cleaned_df.groupby(["sentiment"]).agg({text_column : "count"}).reset_index()
+                        plt.bar(sentiment_df["sentiment"], sentiment_df[text_column], color = ["red", "grey", "green"])
+                        plt.xlabel("Sentiment", fontsize = 25)
+                        plt.xticks(fontsize=25)
+                        plt.yticks(fontsize=25)
+                        plt.ylabel("Number of occurences", fontsize = 25)
+                        plt.title("Sentiment Distribution", fontsize = 35)
+                        input_word_cloud2.pyplot()
+                except:
+                    pass
                 
-                input_word_cloud2. write(' ')
-                input_word_cloud2.info("The cleaned text isn't tokenized yet, so can't create the word cloud or get the sentiment score.")
+                st.write(" ")
+                st.write("""
+                         ### Get Topics -
+                         
+                         Now that we have cleaned the data, it is ready for some topic modelling. The user can choose the number of topics, he/she wants to divide the data into. 
+                         
+                         The code uses Latent Dirichlet Allocation (LDA) to find the topics. It is an unsupervised learning technique to find abstract topics in the document. Further I also provide a coherence score which can be used to measure the division of topics.  
+                         
+                         The user can select the number of topics using the slider below.  
+                         """)
+                
+                st.write(" ")
+                
+                topic_col1, topic_col2, topic_col3 = st.beta_columns((1,3,1))
+                
+                user_num_topics = topic_col2.slider("Select the number of topics - ", 2, 10)
+                
+                topic_col2. write(" ")
+                
+                topicb_col1, topicb_col2, topicb_col3 = st.beta_columns((2,1,2))
+                
+                if topicb_col2.button("Get Topics"):
+                    ftopic_col1, ftopic_col2, ftopic_col3 = st.beta_columns((1,3,1))
+                    topics, coherence_lda = get_topics_users(cleaned_df, user_num_topics)
+                    # Printing the results -
+                    ftopic_col2.write(f'We divide the text into {user_num_topics} topics - ')
+                    ftopic_col2.write('#### The topics are -')
+                    
+                    for id, t in enumerate(topics): 
+                        ftopic_col2.write(f"------ Topic {id} ------")
+                        ftopic_col2.write(t, end="\n")
+                    
+                    ftopic_col2.write(f'\n **Coherence Score: ** {round(coherence_lda, 3)}')
+                    
+                    st.write("""
+                     ### PyLDAvis
+                     
+                     Trying to understand the topics above is a bit difficult. This is made easy with the help of 'PyLDAvis' plots. 
+                     
+                     Unfortunately streamlit doesn't currently support the display of such interactive plots, but the user can refer to the code below to plot the same on their local machine.
+                     
+                     """)
             
+                    st.write(' ')
+                                
+                    with st.echo():
+                        try:
+                            # Code for pyLDAvis -  
+                            vis = pyLDAvis.gensim.prepare() # LDA_Model,  # Bag_of_Words, # dictionary
+                            
+                            # To save the file in the working directory -  
+                            pyLDAvis.save_html(vis, 'LDA_Visualization.html')
+                        except:
+                            pass
+                        
+            else:
+                input_word_cloud2. write(' ')
+                input_word_cloud2. write(' ')
+                input_word_cloud2.info("The cleaned text isn't tokenized yet, so can't create the word cloud or get topics.")
+            
+            st.write("---")
+            st.write("### Reference Code")
             # Giving the code for reference.
             with st.echo():
                 

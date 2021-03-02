@@ -88,32 +88,11 @@ def plot_sentiment_graph(team, col):
     col.pyplot()
 
 def plot_hashtag_graphs(temp, col1, col2):
-    df_team = temp
     col1.write("""
                ### Most Commonly used hashtags - 
                """)
     col1.write(" ")
     col1.write(" ")
-    # Getting each token from all the twets and finding the most common words -
-    flat_hash = [item for sublist in df_team['hashtags'] for item in sublist]
-    word_freq = FreqDist(flat_hash)
-    # Creating a dictionary containing the word and respective count -
-    #retrieve word and count from FreqDist tuples
-    most_common_hash_count = [x[1] for x in word_freq.most_common(20)]
-    most_common_hash = [x[0] for x in word_freq.most_common(20)]
-    top_50_hash = dict(zip(most_common_hash, most_common_hash_count))
-    
-    # Getting the first 30 words for word cloud -
-    # plasma, magma, inferno, viridis, cividis
-    # best inferno :P
-    hashcloud = WordCloud(colormap = 'plasma', background_color = 'white')\
-    .generate_from_frequencies(top_50_hash)
-    # Plotting the word cloud of 50 words using matplotlib -
-    plt.figure(figsize=(12, 8))
-    plt.imshow(hashcloud, interpolation='bilinear')
-    plt.axis("off")
-    plt.tight_layout(pad=0)
-    col1.pyplot()
     
     hash_temp = temp.loc[temp["hashtags"].apply( lambda hashtag: hashtag !=[]),['hashtags']]
 
@@ -124,6 +103,17 @@ def plot_hashtag_graphs(temp, col1, col2):
     
     hash_count = single_hash.groupby('hashtag').size().reset_index(name='counts').sort_values('counts', ascending=False).reset_index(drop=True)
     hash_count = hash_count[0:25]
+    
+    top_50_hash = pd.Series(hash_count["counts"].values,index=hash_count["hashtag"]).to_dict()
+    
+    hashcloud = WordCloud(colormap = 'plasma', background_color = 'white')\
+    .generate_from_frequencies(top_50_hash)
+    # Plotting the word cloud of 50 words using matplotlib -
+    plt.figure(figsize=(12, 8))
+    plt.imshow(hashcloud, interpolation='bilinear')
+    plt.axis("off")
+    plt.tight_layout(pad=0)
+    col1.pyplot()
     
     # find popular hashtags - make into python set for efficiency
     hash_count_temp = set(hash_count['hashtag'])
@@ -159,7 +149,6 @@ def plot_hashtag_graphs(temp, col1, col2):
         cbar_kws={'label':'correlation'})
     plt.title("Correlation between Top 25 Hashtags \n", fontsize = 25)
     col2.pyplot()
-
 
 def get_topics(df, num_topics):
     

@@ -4,6 +4,7 @@ import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
 import streamlit as st
+import seaborn as sns
 from PIL import Image
 import string
 import regex
@@ -41,6 +42,8 @@ def plot_graph(temp, col1, col2):
     col1.write("""
                ### Tweets word cloud - 
                """)
+    col1.write(" ")
+    col1.write(" ")
     # Getting each token from all the twets and finding the most common words -
     flat_words = [item for sublist in df_team['topic_modeling_text'] for item in sublist]
     word_freq = FreqDist(flat_words)
@@ -62,12 +65,35 @@ def plot_graph(temp, col1, col2):
     plt.axis("off")
     plt.tight_layout(pad=0)
     col1.pyplot()
+
+
+def plot_sentiment_graph(team, col):
+    df_team = df_sentiment.loc[df_sentiment['team'] == team]
+
+    df_team = df_team.groupby(['created']).agg({'sentiment_numeric' : 'sum'}).reset_index()
     
-    # ~~~~~~~ Plotting hashtag cloud 
+    col.write("""
+               ### Sentiment trend of the team - 
+               """)
     
-    col2.write("""
+    plt.plot(df_team['created'], df_team['sentiment_numeric'], color = 'navy')
+    plt.title('Daily Tweets Sentiment Score', fontsize = 22)
+    plt.xlabel('Date', fontsize = 20)
+    plt.ylabel('Sentiment Score', fontsize = 20)
+    plt.axhline(y=0, color='black', linestyle='--')
+    plt.axhspan(0, plt.ylim()[1], facecolor='lightgreen')
+    plt.axhspan(plt.ylim()[0],0, facecolor='salmon')
+    #plt.xticks('rotation=20')
+    plt.tight_layout()
+    col.pyplot()
+
+def plot_hashtag_graphs(temp, col1, col2):
+    df_team = temp
+    col1.write("""
                ### Most Commonly used hashtags - 
                """)
+    col1.write(" ")
+    col1.write(" ")
     # Getting each token from all the twets and finding the most common words -
     flat_hash = [item for sublist in df_team['hashtags'] for item in sublist]
     word_freq = FreqDist(flat_hash)
@@ -87,27 +113,53 @@ def plot_graph(temp, col1, col2):
     plt.imshow(hashcloud, interpolation='bilinear')
     plt.axis("off")
     plt.tight_layout(pad=0)
+    col1.pyplot()
+    
+    hash_temp = temp.loc[temp["hashtags"].apply( lambda hashtag: hashtag !=[]),['hashtags']]
+
+    single_hash = pd.DataFrame(
+        [hashtag for hashtags_list in hash_temp.hashtags
+        for hashtag in hashtags_list],
+        columns=['hashtag'])
+    
+    hash_count = single_hash.groupby('hashtag').size().reset_index(name='counts').sort_values('counts', ascending=False).reset_index(drop=True)
+    hash_count = hash_count[0:25]
+    
+    # find popular hashtags - make into python set for efficiency
+    hash_count_temp = set(hash_count['hashtag'])
+    
+    # make a new column with only the popular hashtags
+    hash_temp['popular_hashtags'] = hash_temp["hashtags"].apply(
+                lambda hashtag_list: [hashtag for hashtag in hashtag_list
+                                      if hashtag in hash_count_temp])
+    
+    # drop rows without popular hashtag
+    hash_temp = hash_temp.loc[hash_temp["popular_hashtags"].apply(lambda hashtag_list: hashtag_list !=[])]
+    
+    # make new dataframe
+    hash_temp = hash_temp.loc[:, ['popular_hashtags']]
+    
+    for hashtag in hash_count_temp:
+        # make columns to encode presence of hashtags
+        hash_temp['{}'.format(hashtag)] = hash_temp["popular_hashtags"].apply(
+            lambda hashtag_list: int(hashtag in hashtag_list))
+    
+    hash_temp = hash_temp.drop('popular_hashtags', axis=1)
+    
+    # calculate the correlation matrix
+    correlations = hash_temp.corr()
+    
+    # plot the correlation matrix
+    plt.figure(figsize=(10,10))
+    sns.heatmap(correlations,
+        cmap='RdBu',
+        vmin=-1,
+        vmax=1,
+        square = True,
+        cbar_kws={'label':'correlation'})
+    plt.title("Correlation between Top 25 Hashtags \n", fontsize = 25)
     col2.pyplot()
 
-def plot_sentiment_graph(team, col2):
-    df_team = df_sentiment.loc[df_sentiment['team'] == team]
-
-    df_team = df_team.groupby(['created']).agg({'sentiment_numeric' : 'sum'}).reset_index()
-    
-    col2.write("""
-               ### Sentiment trend of the team - 
-               """)
-    
-    plt.plot(df_team['created'], df_team['sentiment_numeric'], color = 'navy')
-    plt.title('Daily Tweets Sentiment Score', fontsize = 22)
-    plt.xlabel('Date', fontsize = 20)
-    plt.ylabel('Sentiment Score', fontsize = 20)
-    plt.axhline(y=0, color='black', linestyle='--')
-    plt.axhspan(0, plt.ylim()[1], facecolor='lightgreen')
-    plt.axhspan(plt.ylim()[0],0, facecolor='salmon')
-    #plt.xticks('rotation=20')
-    plt.tight_layout()
-    col2.pyplot()
 
 def get_topics(df, num_topics):
     
@@ -205,21 +257,34 @@ def nba_analysis_page():
                                                        'Houston Rockets'])
     
     st.write(' ')
-    
-    # Dividing the screen into 2 parts for team specific graphs -
-    word_col1, word_col2, word_col3 = st.beta_columns((2,0.2,2))
-    
-    # Dividing the screen for the sentiments - 
-    senti_col1, senti_col2, senti_col3 = st.beta_columns((0.75, 2, 0.75))
-    
+   
     if selected_team != '~ Select ~':
+        
+        st.write("""
+                 The first 2 graphs we see help us in understanding the tweets in general. The first plot is a word cloud of the most frequent words in the tweets. This can help in getting an overview of what the tweets are about in general with connection to the selected team. 
+                 We can also see the sentiment distribution of the tweets for the team over a span of 6 months. This helps in understanding whether a team is majorly associated with positive public sentiment or not.
+                 """)
+        st.write(' ')
+        # Dividing the screen into 2 parts for team specific graphs -
+        word_col1, word_col2, word_col3 = st.beta_columns((2,0.2,2))
         
         # Forming word cloud, sentiment score and most hashtags used cloud - 
         temp = get_data(selected_team)
         
         plot_graph(temp, word_col1, word_col3)
         
-        plot_sentiment_graph(selected_team, senti_col2)
+        plot_sentiment_graph(selected_team, word_col3)
+        
+        st.write(' ')
+        st.write("""
+                 After analyzing the general behavior of the tweets, the marketing team can also analyze the hashtags associated with the tweets. The first plot is a word cloud of the top 25 hashtags of the team. 
+                 Further can also see the correlation between the most common hashtags. This gives an understanding of which hashtags are generally used together. This can be used to come up with another hashtag and place it strategically to get the most popularity.
+                 """)
+        st.write(' ')
+        # Dividing the screen for the sentiments - 
+        senti_col1, senti_col2, senti_col3 = st.beta_columns((2,0.2,2))
+        
+        plot_hashtag_graphs(temp, senti_col1, senti_col3)
         
         # Getting to the topics - 
         st.write(' ')

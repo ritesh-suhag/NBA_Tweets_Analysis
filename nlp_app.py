@@ -183,22 +183,24 @@ def nba_analysis_page():
     st.write("""
              # NBA Tweets Analysis!
              
-             This page is designed to give an overview of the tweets of NBA teams over a period of 6 months (Jan 2020 to June 2020).  
-             We first see the distribution of tweets by teams over the period to understand which team had a more online presence. 
-             We also see the word distribution of the tweets.  
-             
-             Once we have the overall picture of the tweets, we can select a particular to understand the tweets of the team. 
-             In this section, we see the most used words in the tweets and most used hash-tags. 
-             This helps us in understanding which hashtags resonate most with the fans and how we can tweak those to get more traction.
-             We also analyze the sentiment of the tweets over the period.  
-             
-             Lastly, we can also try to derive topics from the tweets. 
-             We can select the number of topics we want to divide the tweets into and graph the PyLDAvis graph to explore the topics.
+             The purpose of this page is to give insights into tweets of different NBA teams. Data used is tweets from Jan 2020 to June 2020. First, a general overview of the teams is shown. The user can then select any particular team to get a detailed analysis.  
+             The tweets can also be divided into different topics using LDA. PyLDAvis graph is recommended to explore different topics.
              
              """)
              
     st.write(' ')
     
+    about_expander = st.beta_expander("About")
+    about_expander.write("""
+                         This page is designed to give an overview of the tweets of NBA teams over a period of 6 months (Jan 2020 to June 2020).  
+                         
+                         We first see the distribution of tweets by teams over the period to understand which team had a more online presence. We also see the word distribution of the tweets.  
+                         
+                         Once we have the overall picture of the tweets, we can select a particular to understand the tweets of the team. In this section, we see the most used words in the tweets and most used hash-tags. This helps us in understanding which hashtags resonate most with the fans and how we can tweak those to get more traction. We also analyze the sentiment of the tweets over the period.  
+                         
+                         Lastly, we can also try to derive topics from the tweets. We can select the number of topics we want to divide the tweets into and graph the PyLDAvis graph to explore the topics.
+                         """)
+    st.write(" ")
     st.write("""
              ## Initial Overview of all the tweets
              
@@ -250,8 +252,7 @@ def nba_analysis_page():
     if selected_team != '~ Select ~':
         
         st.write("""
-                 The first 2 graphs we see help us in understanding the tweets in general. The first plot is a word cloud of the most frequent words in the tweets. This can help in getting an overview of what the tweets are about in general with connection to the selected team. 
-                 We can also see the sentiment distribution of the tweets for the team over a span of 6 months. This helps in understanding whether a team is majorly associated with positive public sentiment or not.
+                 The 2 plots help in understanding the overall polarity of the tweets. The word cloud of most frequent words helps in getting an overview of the tweets. The sentiment trend of the tweets helps in understanding whether a team is majorly associated with positive public sentiment or not.
                  """)
         st.write(' ')
         # Dividing the screen into 2 parts for team specific graphs -
@@ -266,9 +267,8 @@ def nba_analysis_page():
         
         st.write(' ')
         st.write("""
-                 After analyzing the general behavior of the tweets, the marketing team can also analyze the hashtags associated with the tweets. The first plot is a word cloud of the top 25 hashtags of the team. 
-                 Further can also see the correlation between the most common hashtags. This gives an understanding of which hashtags are generally used together. This can be used to come up with another hashtag and place it strategically to get the most popularity.
-                 """)
+                The next two plots help in analyzing the hashtags associated with the tweets. The word cloud gives an overview of the most used tweets. The correlation matrix can be used to understand which hashtags occur together. This can be used to come up with another hashtag and place it strategically to get the most popularity.
+                """)
         st.write(' ')
         # Dividing the screen for the sentiments - 
         senti_col1, senti_col2, senti_col3 = st.beta_columns((2,0.2,2))
@@ -278,9 +278,11 @@ def nba_analysis_page():
         # Getting to the topics - 
         st.write(' ')
         st.write("""
-                 From above we get an overview of the tweets in which a team was tagged. The same can help us in understanding the polarity of the team's tweets.  
+                 The marketing team can use this information to make an informed decision. If needed, we also have the option to investigate the topics of the tweets.  
                  
-                 The marketing team can use this information to make an informed decision. If needed, we also have the option to investigate the topics of the tweets leveraging the power of LDA. We can select the number of topics we want to divide the tweets into using the slider below.
+                 To get the topics, we will make use of topic modeling which refers to the task of identifying topics that best describes a set of documents. One popular topic modeling technique is known as Latent Dirichlet Allocation (LDA). LDA imagines a fixed set of topics. Each topic represents a set of words. And the goal of LDA is to map all the documents to the topics in a way, such that the words in each document are mostly captured by those imaginary topics.  
+
+                 The number of topics we want to divide the tweets into can be selected using the select box below.  
                  
                  * **Note:** For visualization purposes, we only find topics on a subset of the data (20%) to ensure the program finishes in a timely manner. The same logic can be applied to the entire data.
                  """)
@@ -290,23 +292,29 @@ def nba_analysis_page():
         num_of_topics = topic_col2.selectbox('Select the number of topics for Topic Modeling', ['~ Select Num of Topics ~', 2, 3, 4, 5 ,6 ,7, 8, 9, 10])
         
         if num_of_topics != '~ Select Num of Topics ~':
+            
             topic_col2.info('Please wait while topic are being calculated. It may take 2-5 minutes.')
             topics, coherence_lda = get_topics(temp, num_of_topics)
+            
+            st.info('We see the words most associated with their respective topics below.')
             # Printing the results -
             st.write(f'We divide the tweets into {num_of_topics} topics - ')
-            st.write('#### The topics are -')
+            st.write('#### The topics are - \n')
             
             for id, t in enumerate(topics): 
                 st.write(f"------ Topic {id} ------")
                 st.write(t, end="\n")
             
             st.write('\n **Coherence Score: **', round(coherence_lda, 3))
+            st.write("(Topic Coherence measures score a single topic by measuring the degree of semantic similarity between high scoring words in the topic. These measurements help distinguish between topics that are semantically interpretable topics and topics that are artifacts of statistical inference.)")
             # Add image and give download functionality!
             
             st.write("""
                      ### PyLDAvis
                      
-                     Trying to understand the topics above is a bit difficult. This is made easy with the help of 'PyLDAvis' plots. 
+                     Trying to understand the topics above is a bit difficult. This is made easy with the help of 'pyLDAvis' plots. 
+                     
+                     The 'pyLDAvis' is an interactive LDA visualization python package. The area of circle represents the importance of each topic over the entire corpus, the distance between the center of circles indicate the similarity between topics. For each topic, the histogram on the right side listed the top 30 most relevant terms. The bars represent the terms that are most useful in interpreting the topic currently selected.  
                      
                      A snapshot of the same can be seen below. Unfortunately streamlit doesn't currently support the display of such interactive plots, but the user can refer to the code below to plot the same on their local machine.
                      

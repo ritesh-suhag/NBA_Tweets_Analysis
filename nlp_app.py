@@ -14,6 +14,7 @@ import base64
 # Forming word cloud - getting word frequencies -
 import nltk
 nltk.download('stopwords')
+nltk.download('punkt')
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 from nltk.stem import WordNetLemmatizer

@@ -34,8 +34,8 @@ import gensim.corpora as corpora
 # Function to form primary graphs for a selected team - 
 
 def get_data(team):
-    return pickle.load(open(f'Data_Cleaning/{team}.p', 'rb'))
-
+    # return pickle.load(open(f'Data_Cleaning/{team}.p', 'rb'))
+    return pd.read_pickle(f'Data_Cleaning/{team}.p')
 
 def plot_graph(temp, col1, col2):
     

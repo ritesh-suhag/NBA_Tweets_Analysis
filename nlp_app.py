@@ -859,7 +859,8 @@ if image.mode != "RGB":
 st.image(image, use_column_width=True)
 
 # Loading the sentiment data because we require it immediately - 
-df_sentiment = pickle.load(open('Data_Cleaning/sentiment_data.p', 'rb'))
+# df_sentiment = pickle.load(open('Data_Cleaning/sentiment_data.p', 'rb'))
+df_sentiment = pd.read_pickle('Data_Cleaning/sentiment_data.p')
 
 # Sidebar navigation for users -
 st.sidebar.header('Navigation tab -')

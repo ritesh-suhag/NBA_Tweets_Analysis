@@ -212,7 +212,7 @@ def nba_analysis_page():
              """)
     
     # Dividing the screen into 2 columns -
-    col1, col2 = st.beta_columns((1,1.4))
+    col1, col2 = st.columns((1,1.4))
     
     # displaying the distribution of tweets - 
     team_count = pd.DataFrame(df_sentiment['team'].value_counts().reset_index())
@@ -246,7 +246,7 @@ def nba_analysis_page():
     st.write(' ')
     
     # Dividing the screen into 2 columns -
-    col1, col2, col3 = st.beta_columns((1,1,1))
+    col1, col2, col3 = st.columns((1,1,1))
     
     selected_team = col2.selectbox('Select a team -', ['~ Select ~', 'Chicago Bulls', 'Miami Heat', 'Boston Celtics', 'Toronto Raptors', 
                                                        'Houston Rockets'])
@@ -260,7 +260,7 @@ def nba_analysis_page():
                  """)
         st.write(' ')
         # Dividing the screen into 2 parts for team specific graphs -
-        word_col1, word_col2, word_col3 = st.beta_columns((2,0.2,2))
+        word_col1, word_col2, word_col3 = st.columns((2,0.2,2))
         
         # Forming word cloud, sentiment score and most hashtags used cloud - 
         temp = get_data(selected_team)
@@ -275,7 +275,7 @@ def nba_analysis_page():
                 """)
         st.write(' ')
         # Dividing the screen for the sentiments - 
-        senti_col1, senti_col2, senti_col3 = st.beta_columns((2,0.2,2))
+        senti_col1, senti_col2, senti_col3 = st.columns((2,0.2,2))
         
         plot_hashtag_graphs(temp, senti_col1, senti_col3)
         
@@ -291,7 +291,7 @@ def nba_analysis_page():
                  * **Note:** For visualization purposes, we only find topics on a subset of the data (20%) to ensure the program finishes in a timely manner. The same logic can be applied to the entire data.
                  """)
         
-        topic_col1, topic_col2, topic_col3 = st.beta_columns((1,3,1))
+        topic_col1, topic_col2, topic_col3 = st.columns((1,3,1))
         
         num_of_topics = topic_col2.selectbox('Select the number of topics for Topic Modeling', ['~ Select Num of Topics ~', 2, 3, 4, 5 ,6 ,7, 8, 9, 10])
         
@@ -558,7 +558,7 @@ def basic_nlp():
     
     if input_preference != "~ Select ~" and user_data != 2:
         if input_df is not None:
-            col1, col2, col3 = st.beta_columns((1,4,1))
+            col1, col2, col3 = st.columns((1,4,1))
             col2.write('Below we can see 100 random rows from the data ')
             
             col2.dataframe(input_df.sample(100, random_state = 42))
@@ -598,7 +598,7 @@ def basic_nlp():
                     
                      """)
             
-            op_col0, op_col1, op_col2 = st.beta_columns((1,4,1))
+            op_col0, op_col1, op_col2 = st.columns((1,4,1))
             
             
             url_command = op_col1.selectbox('Remove any URLs present', ['~ Select ~', 'Remove URLs'], index = 0)
@@ -638,10 +638,10 @@ def basic_nlp():
                      """)
             st.write(' ')
             
-            df_col1, df_col2, df_col3 = st.beta_columns((1,4,1))
+            df_col1, df_col2, df_col3 = st.columns((1,4,1))
             df_col2.dataframe(cleaned_df.sample(100, random_state = 42))
             
-            input_word_cloud1, input_word_cloud2, input_word_cloud3 = st.beta_columns((1,3,1))
+            input_word_cloud1, input_word_cloud2, input_word_cloud3 = st.columns((1,3,1))
             try:
                 input_word_cloud2.markdown(f"{filedownload(cleaned_df)}", unsafe_allow_html = True)
             except RuntimeError:
@@ -701,16 +701,16 @@ def basic_nlp():
                 
                 st.write(" ")
                 
-                topic_col1, topic_col2, topic_col3 = st.beta_columns((1,3,1))
+                topic_col1, topic_col2, topic_col3 = st.columns((1,3,1))
                 
                 user_num_topics = topic_col2.slider("Select the number of topics - ", 2, 10)
                 
                 topic_col2. write(" ")
                 
-                topicb_col1, topicb_col2, topicb_col3 = st.beta_columns((2,1,2))
+                topicb_col1, topicb_col2, topicb_col3 = st.columns((2,1,2))
                 
                 if topicb_col2.button("Get Topics"):
-                    ftopic_col1, ftopic_col2, ftopic_col3 = st.beta_columns((1,3,1))
+                    ftopic_col1, ftopic_col2, ftopic_col3 = st.columns((1,3,1))
                     topics, coherence_lda = get_topics_users(cleaned_df, user_num_topics)
                     # Printing the results -
                     ftopic_col2.write(f'We divide the text into {user_num_topics} topics - ')

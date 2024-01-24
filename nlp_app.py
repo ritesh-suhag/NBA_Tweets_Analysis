@@ -194,7 +194,7 @@ def nba_analysis_page():
              
     st.write(' ')
     
-    about_expander = st.beta_expander("About")
+    about_expander = st.expander("About")
     about_expander.write("""
                          This page is designed to give an overview of the tweets of NBA teams over a period of 6 months (Jan 2020 to June 2020).  
                          
@@ -519,7 +519,7 @@ def basic_nlp():
     st.write(' ')
     
     # About the section - 
-    about_expander = st.beta_expander('About')
+    about_expander = st.expander('About')
     about_expander.write("""
                          Please read through the points to gain a better understanding of the functionality of the application. Here the user can upload their own data to play around with. Once the data has been uploaded -   
                          
